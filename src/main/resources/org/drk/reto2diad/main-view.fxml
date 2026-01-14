@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.drk.reto2diad.controllers.MainController">
+    <top>
+        <VBox spacing="0" BorderPane.alignment="CENTER">
+            <children>
+                <HBox alignment="CENTER_LEFT" onMouseDragged="#onTitleBarDragged" onMousePressed="#onTitleBarPressed" prefHeight="40.0" spacing="8" style="-fx-background-color: #2b2b2b; -fx-padding: 4 10 4 10;">
+                    <children>
+                        <Label fx:id="lblWinTitle" text="Gestor de copias y películas" textFill="WHITE">
+                            <font><Font name="System Bold" size="13.0" /></font>
+                        </Label>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onMinimizeWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="—">
+                            <tooltip><Tooltip text="Minimizar" /></tooltip>
+                        </Button>
+                        <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onCloseWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="×">
+                            <tooltip><Tooltip text="Cerrar" /></tooltip>
+                        </Button>
+                    </children>
+                </HBox>
+                <Separator maxWidth="Infinity" prefHeight="12.0" prefWidth="1202.0" />
+            </children>
+        </VBox>
+    </top>
+    <center>
+        <VBox prefHeight="514.0" prefWidth="762.0" spacing="10" BorderPane.alignment="TOP_CENTER">
+            <children>
+                <TableView fx:id="tablaPeliculas" prefHeight="500.0" prefWidth="547.0">
+                    <columns>
+                        <TableColumn fx:id="colPeliId" prefWidth="56.0" text="ID" />
+                        <TableColumn fx:id="colPeliTitulo" prefWidth="267.0" text="Título" />
+                        <TableColumn fx:id="colPeliAnio" prefWidth="79.0" text="Año" />
+                        <TableColumn fx:id="colPeliGenero" prefWidth="115.0" text="Género" />
+                        <TableColumn fx:id="colPeliDirector" prefWidth="219.0" text="Director" />
+                    </columns>
+                </TableView>
+                <HBox fx:id="boxAdmin" alignment="CENTER" spacing="10">
+                    <children>
+                        <Button fx:id="btnAddPeli" onAction="#onAddPelicula" text="Añadir película" />
+                        <Button fx:id="btnEditPeli" onAction="#onEditPelicula" text="Editar película" />
+                        <Button fx:id="btnDelPeli" onAction="#onDeletePelicula" text="Eliminar película" />
+                        <Button fx:id="btnGestionUsuarios" onAction="#onGestionUsuarios" text="Gestionar Usuarios" />
+                    </children>
+                </HBox>
+            </children>
+            <padding><Insets bottom="15.0" left="15.0" right="10.0" /></padding>
+        </VBox>
+    </center>
+    <right>
+        <FlowPane prefHeight="517.0" prefWidth="440.0" style="-fx-padding: 0 20 0 20; -fx-alignment: TOP_CENTER;" BorderPane.alignment="TOP_CENTER">
+            <children>
+                <FlowPane prefWidth="304.0" style="-fx-background-color: #ffffff; -fx-padding: 15; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #cccccc; -fx-border-width: 1;">
+                    <children>
+                        <VBox alignment="CENTER" spacing="8">
+                            <children>
+                                <Label fx:id="lblUsuarioActual" alignment="CENTER" text="User">
+                                    <font><Font size="18" /></font>
+                                </Label>
+                                <TableView fx:id="tablaCopias" prefHeight="235.0" prefWidth="352.0">
+                                    <columns>
+                                        <TableColumn fx:id="colCopiaId" prefWidth="50" text="ID" />
+                                        <TableColumn fx:id="colCopiaTitulo" prefWidth="140" text="Película" />
+                                        <TableColumn fx:id="colCopiaEstado" prefWidth="80" text="Estado" />
+                                        <TableColumn fx:id="colCopiaSoporte" prefWidth="81.0" text="Soporte" />
+                                    </columns>
+                                </TableView>
+                                <TitledPane expanded="true" text="Crear nueva copia">
+                                    <content>
+                                        <VBox spacing="6">
+                                            <children>
+                                                <Label text="Selecciona una película a la izquierda" />
+                                                <HBox spacing="10">
+                                                    <children>
+                                                        <Label text="Estado" />
+                                                        <ComboBox fx:id="cmbEstado" prefWidth="140" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox spacing="10">
+                                                    <children>
+                                                        <Label text="Soporte" />
+                                                        <ComboBox fx:id="cmbSoporte" prefWidth="140" />
+                                                    </children>
+                                                </HBox>
+                                                <Button onAction="#onCreateCopia" text="Crear copia" />
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </TitledPane>
+                                <HBox alignment="CENTER" spacing="10">
+                                    <children>
+                                        <Button onAction="#onEditCopia" text="Editar copia" />
+                                        <Button onAction="#onDeleteCopia" text="Eliminar copia" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </FlowPane>
+            </children>
+        </FlowPane>
+    </right>
+    <bottom>
+        <Button fx:id="btnSalir" mnemonicParsing="false" onAction="#onSalir" text="Salir" BorderPane.alignment="CENTER" />
+    </bottom>
+    <padding><Insets bottom="10.0" /></padding>
+</BorderPane>

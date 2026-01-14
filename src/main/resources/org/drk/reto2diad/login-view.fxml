@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" prefHeight="0.0" prefWidth="420.0" style="-fx-background-color: #2b2b2b;" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.drk.reto2diad.controllers.LoginController">
+    <children>
+        <HBox alignment="CENTER_LEFT" onMouseDragged="#onTitleBarDragged" onMousePressed="#onTitleBarPressed" prefHeight="40.0" spacing="8" style="-fx-background-color: #2b2b2b; -fx-padding: 4 10 4 10;">
+            <children>
+                <Label text="Login" textFill="WHITE">
+                    <font><Font name="System Bold" size="13.0" /></font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS" />
+                <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onMinimizeWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="—">
+                    <tooltip><Tooltip text="Minimizar" /></tooltip>
+                </Button>
+                <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onCloseWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="×">
+                    <tooltip><Tooltip text="Cerrar" /></tooltip>
+                </Button>
+            </children>
+        </HBox>
+
+        <VBox prefHeight="126.0" prefWidth="420.0" spacing="12.0" style="-fx-background-color: #ffffff; -fx-padding: 14; -fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #cccccc; -fx-border-width: 1;">
+            <children>
+                <GridPane alignment="CENTER" hgap="10" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" minWidth="80.0" prefWidth="100.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="180.0" prefWidth="240.0" />
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
+                        <RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="NEVER" />
+                    </rowConstraints>
+                    <children>
+                        <Label text="Correo:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                        <TextField fx:id="txtCorreo" promptText="email@example.com" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                        <Label text="Contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                  <PasswordField fx:id="txtContraseña" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                    </children>
+                </GridPane>
+
+                <HBox alignment="CENTER" spacing="12">
+                    <children>
+                        <ComboBox fx:id="cmbUsuarios" prefHeight="25.0" prefWidth="132.0" promptText="(Admin) All users" />
+                        <Button onAction="#entrar" text="Entrar" />
+                        <Button onAction="#Salir" text="Salir" />
+                        <!-- <Button fx:id="a" onAction="#a" mnemonicParsing="false" text="ª" /> -->
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </children>
+</VBox>
