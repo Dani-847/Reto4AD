@@ -1,4 +1,3 @@
-// java
 package org.drk.reto2diad.copia;
 
 import org.drk.reto2diad.pelicula.Pelicula;
@@ -9,13 +8,6 @@ import org.hibernate.Session;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Servicio de Copia:
- * - Crea copias asociadas a usuario y película.
- * - Actualiza solo si el usuario es propietario.
- * - Elimina validando propiedad.
- * - Lista copias por usuario.
- */
 public class CopiaService {
 
     private final CopiaRepository repo;
@@ -44,29 +36,84 @@ public class CopiaService {
         }
     }
 
-    public Optional<Copia> update(Long copiaId, User active, String estado, String soporte) {
+    public Optional<Copia> delete(Integer copiaId, User active) {
+        if (copiaId == null || active == null || active.getId() == null) return Optional.empty();
+
         try (Session s = DataProvider.getSessionFactory().openSession()) {
-            Copia c = s.find(Copia.class, copiaId);
-            if (c == null) return Optional.empty();
-            if (!c.getUser().getId().equals(active.getId())) return Optional.empty();
             s.beginTransaction();
-            c.setEstado(estado);
-            c.setSoporte(soporte);
-            s.merge(c);
+
+            // 1) Cargar para poder devolver la copia borrada (opcional)
+            Copia existing = s.find(Copia.class, copiaId);
+            if (existing == null) {
+                s.getTransaction().rollback();
+                return Optional.empty();
+            }
+
+            // 2) Borrado condicionado por propietario (1 query -> se verá el DELETE en el log)
+            int rows = s.createMutationQuery(
+                            "delete from Copia c where c.id = :id and c.user.id = :userId"
+                    )
+                    .setParameter("id", copiaId)
+                    .setParameter("userId", active.getId())
+                    .executeUpdate();
+
+            if (rows != 1) {
+                s.getTransaction().rollback();
+                return Optional.empty();
+            }
+
             s.getTransaction().commit();
-            return Optional.of(c);
+            return Optional.of(existing);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return Optional.empty();
         }
     }
 
-    public Optional<Copia> delete(Long copiaId, User active) {
+    public Optional<Copia> update(Integer copiaId, User active, String estado, String soporte) {
+        if (copiaId == null || active == null || active.getId() == null) return Optional.empty();
+
         try (Session s = DataProvider.getSessionFactory().openSession()) {
-            Copia c = s.find(Copia.class, copiaId);
-            if (c == null) return Optional.empty();
-            if (!c.getUser().getId().equals(active.getId())) return Optional.empty();
             s.beginTransaction();
-            s.remove(c);
+
+            Copia c = s.find(Copia.class, copiaId);
+            if (c == null) {
+                s.getTransaction().rollback();
+                return Optional.empty();
+            }
+
+            if (c.getUser() == null || c.getUser().getId() == null) {
+                s.getTransaction().rollback();
+                return Optional.empty();
+            }
+
+            long ownerId = ((Number) c.getUser().getId()).longValue();
+            long activeId = ((Number) active.getId()).longValue();
+            if (ownerId != activeId) {
+                s.getTransaction().rollback();
+                return Optional.empty();
+            }
+
+            c.setEstado(estado);
+            c.setSoporte(soporte);
+
+            s.flush();
             s.getTransaction().commit();
             return Optional.of(c);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public List<Copia> findByMovie(Pelicula pelicula) {
+        try (Session s = DataProvider.getSessionFactory().openSession()) {
+            return s.createQuery(
+                            "select c from Copia c where c.movie.id = :movieId",
+                            Copia.class
+                    )
+                    .setParameter("movieId", pelicula.getId())
+                    .getResultList();
         }
     }
 }

@@ -27,6 +27,7 @@ import org.drk.reto2diad.user.User;
 import org.drk.reto2diad.utils.JavaFXUtil;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
@@ -259,25 +260,34 @@ public class MainController implements Initializable {
     public void onEditCopia(ActionEvent e) {
         Copia copia = tablaCopias.getSelectionModel().getSelectedItem();
         if (copia == null) return;
-        var updated = copiaService.update(Long.valueOf(copia.getId()), active, cmbEstado.getValue(), cmbSoporte.getValue());
+
+        Integer copiaId = copia.getId();
+        if (copiaId == null) return;
+
+        var updated = copiaService.update(copiaId, active, cmbEstado.getValue(), cmbSoporte.getValue());
         if (updated.isEmpty()) {
             JavaFXUtil.showModal(Alert.AlertType.ERROR, "Editar", "No permitido", "Solo tus copias.");
             return;
         }
-        tablaCopias.refresh();
+
+        refreshData();
     }
 
     @FXML
     public void onDeleteCopia(ActionEvent e) {
         Copia copia = tablaCopias.getSelectionModel().getSelectedItem();
         if (copia == null) return;
-        var deleted = copiaService.delete(Long.valueOf(copia.getId()), active);
+
+        Integer copiaId = copia.getId();
+        if (copiaId == null) return;
+
+        var deleted = copiaService.delete(copiaId, active);
         if (deleted.isEmpty()) {
             JavaFXUtil.showModal(Alert.AlertType.ERROR, "Eliminar", "No permitido", "Solo tus copias.");
             return;
         }
-        tablaCopias.getSelectionModel().clearSelection();
-        tablaCopias.refresh();
+
+        refreshData();
     }
 
     @FXML
@@ -367,14 +377,51 @@ public class MainController implements Initializable {
         Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
         if (sel == null) return;
 
-        Pelicula before = snapshot(sel);
-        peliculaService.delete(sel);
+        // 1) Bloquear borrado si hay copias asociadas (FK ON DELETE RESTRICT)
+        try {
+            List<Copia> copias = copiaService.findByMovie(sel); // Asegúrate de tener este método en CopiaService
+            if (copias != null && !copias.isEmpty()) {
+                JavaFXUtil.showModal(
+                        Alert.AlertType.WARNING,
+                        "Eliminar película",
+                        "No se puede eliminar",
+                        "La película tiene " + copias.size() + " copia(s) asociada(s).\n" +
+                                "Elimina primero esas copias o cambia la política de borrado en la BD."
+                );
+                return;
+            }
+        } catch (Exception ex) {
+            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Comprobando copias", ex.getMessage());
+            return;
+        }
 
-        // deshacer DELETE => volver a guardar el estado anterior
-        setUndo(new MovieUndoAction(MovieOpType.DELETE, before, null));
+        // 2) Confirmación
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirmar eliminación");
+        confirm.setHeaderText("¿Eliminar la película seleccionada?");
+        String titulo = (sel.getTitulo() != null && !sel.getTitulo().isBlank()) ? sel.getTitulo() : "(sin título)";
+        confirm.setContentText("Se eliminará: " + titulo);
 
-        refreshData();
+        ButtonType btnEliminar = new ButtonType("Eliminar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        confirm.getButtonTypes().setAll(btnEliminar, btnCancelar);
+
+        var res = confirm.showAndWait();
+        if (res.isEmpty() || res.get() != btnEliminar) return;
+
+        // 3) Eliminar + preparar undo
+        try {
+            Pelicula before = snapshot(sel);
+            peliculaService.delete(sel);
+
+            setUndo(new MovieUndoAction(MovieOpType.DELETE, before, null));
+            refreshData();
+        } catch (Exception ex) {
+            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Eliminar película", ex.getMessage());
+        }
     }
+
+
 
     @FXML
     public void onGestionUsuarios(ActionEvent e) {
