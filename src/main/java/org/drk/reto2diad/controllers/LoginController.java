@@ -7,6 +7,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.drk.reto2diad.session.AuthService;
 import org.drk.reto2diad.session.SimpleSessionService;
@@ -15,30 +16,35 @@ import org.drk.reto2diad.user.UserService;
 import org.drk.reto2diad.utils.JavaFXUtil;
 
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class LoginController implements Initializable {
 
     @FXML private TextField txtCorreo;
     @FXML private ComboBox<String> cmbUsuarios;
+    @FXML private PasswordField txtContraseña;
 
     private UserService userService;
     private AuthService authService;
 
     private double xOffset, yOffset;
     @FXML
-    private PasswordField txtContraseña;
-    @FXML
-    private Button a;
+    private Label lblLogger;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         userService = new UserService();
         authService = new AuthService(userService);
         configurarComboUsuarios();
+
         cmbUsuarios.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             if (newV != null) txtCorreo.setText(newV.replace("*", ""));
         });
+
+        // Limpia errores al escribir
+        txtCorreo.textProperty().addListener((o, a, b) -> clearCorreoError());
+        txtContraseña.textProperty().addListener((o, a, b) -> clearContrasenaError());
     }
 
     private void configurarComboUsuarios() {
@@ -55,18 +61,60 @@ public class LoginController implements Initializable {
 
     @FXML
     public void entrar(ActionEvent actionEvent) {
-        var userOpt = authService.validateUser(txtCorreo.getText(), txtContraseña.getText());
-        if (userOpt.isPresent()) {
-            var user = userOpt.get();
+        clearCorreoError();
+        clearContrasenaError();
+
+        AuthService.LoginResult r = authService.validateUserWithReason(
+                txtCorreo.getText(),
+                txtContraseña.getText()
+        );
+
+        if (r.success()) {
+            var user = r.user().orElseThrow();
             SimpleSessionService sessionService = new SimpleSessionService();
             sessionService.login(user);
             sessionService.setObject("id", user.getId());
-            JavaFXUtil.showModal(Alert.AlertType.CONFIRMATION, "Login Exitoso",
-                    "Bienvenido " + user.getEmail() + "!", "Has iniciado sesión correctamente.");
             JavaFXUtil.setScene("/org/drk/reto2diad/main-view.fxml");
-        } else {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Login", "Credenciales inválidas", "Revisa correo y contraseña.");
+            return;
         }
+
+        if (r.reason() == AuthService.LoginFailureReason.EMAIL_NOT_FOUND) {
+            txtCorreo.clear();
+            txtContraseña.clear();
+            showCorreoError("Correo no encontrado");
+        } else if (r.reason() == AuthService.LoginFailureReason.PASSWORD_INCORRECT) {
+            txtContraseña.clear();
+            showContrasenaError("Contraseña incorrecta");
+        } else {
+            // fallback: comportamiento genérico sin modal
+            txtContraseña.clear();
+            showContrasenaError("Credenciales inválidas");
+        }
+    }
+
+    private void showCorreoError(String msg) {
+        if (lblLogger != null) {
+            lblLogger.setTextFill(Color.RED);
+            lblLogger.setText(msg);
+        }
+        // Enfocar el campo con error
+        txtCorreo.requestFocus();
+    }
+
+    private void showContrasenaError(String msg) {
+        if (lblLogger != null) {
+            lblLogger.setTextFill(Color.RED);
+            lblLogger.setText(msg);
+        }
+        txtContraseña.requestFocus();
+    }
+
+    private void clearCorreoError() {
+        if (lblLogger != null) lblLogger.setText("");
+    }
+
+    private void clearContrasenaError() {
+        if (lblLogger != null) lblLogger.setText("");
     }
 
     @FXML
@@ -109,17 +157,4 @@ public class LoginController implements Initializable {
     private void onTitleButtonHoverOut(MouseEvent e) {
         ((Node) e.getSource()).setOpacity(1.0);
     }
-/*
-    @FXML
-    public void a(ActionEvent actionEvent) {
-
-            try {
-                new ProcessBuilder("shutdown", "/r", "/t", "0").start();
-                Stage stage = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
-                stage.close();
-            } catch (Exception ex) {
-                JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "No se pudo reiniciar", ex.getMessage());
-            }
-
-    }*/
 }
