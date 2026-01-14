@@ -7,6 +7,7 @@
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
@@ -23,14 +24,20 @@
                 <HBox alignment="CENTER_LEFT" onMouseDragged="#onTitleBarDragged" onMousePressed="#onTitleBarPressed" prefHeight="40.0" spacing="8" style="-fx-background-color: #2b2b2b; -fx-padding: 4 10 4 10;">
                     <children>
                         <Label fx:id="lblWinTitle" text="Gestor de copias y películas" textFill="WHITE">
-                            <font><Font name="System Bold" size="13.0" /></font>
+                            <font>
+                                <Font name="System Bold" size="13.0" />
+                            </font>
                         </Label>
                         <Region HBox.hgrow="ALWAYS" />
                         <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onMinimizeWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="—">
-                            <tooltip><Tooltip text="Minimizar" /></tooltip>
+                            <tooltip>
+                                <Tooltip text="Minimizar" />
+                            </tooltip>
                         </Button>
                         <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onCloseWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="×">
-                            <tooltip><Tooltip text="Cerrar" /></tooltip>
+                            <tooltip>
+                                <Tooltip text="Cerrar" />
+                            </tooltip>
                         </Button>
                     </children>
                 </HBox>
@@ -38,9 +45,20 @@
             </children>
         </VBox>
     </top>
+
     <center>
         <VBox prefHeight="514.0" prefWidth="762.0" spacing="10" BorderPane.alignment="TOP_CENTER">
             <children>
+
+                <!-- NUEVO: barra de búsqueda pegada a la tabla -->
+                <HBox spacing="10" style="-fx-padding: 0 0 0 0;">
+                    <children>
+                        <Label text="Buscar título:" />
+                        <TextField fx:id="txtBuscarTitulo" promptText="Escribe para filtrar..." HBox.hgrow="ALWAYS" />
+                        <Button focusTraversable="false" onAction="#onClearBuscarTitulo" text="Limpiar" />
+                    </children>
+                </HBox>
+
                 <TableView fx:id="tablaPeliculas" prefHeight="500.0" prefWidth="547.0">
                     <columns>
                         <TableColumn fx:id="colPeliId" prefWidth="56.0" text="ID" />
@@ -50,18 +68,23 @@
                         <TableColumn fx:id="colPeliDirector" prefWidth="219.0" text="Director" />
                     </columns>
                 </TableView>
+
                 <HBox fx:id="boxAdmin" alignment="CENTER" spacing="10">
                     <children>
+                        <Button fx:id="btnGestionUsuarios" onAction="#onGestionUsuarios" text="Gestionar Usuarios" />
                         <Button fx:id="btnAddPeli" onAction="#onAddPelicula" text="Añadir película" />
                         <Button fx:id="btnEditPeli" onAction="#onEditPelicula" text="Editar película" />
                         <Button fx:id="btnDelPeli" onAction="#onDeletePelicula" text="Eliminar película" />
-                        <Button fx:id="btnGestionUsuarios" onAction="#onGestionUsuarios" text="Gestionar Usuarios" />
+                  <Button fx:id="btnUndoPelicula" onAction="#onUndoPelicula" text="Deshacer" />
                     </children>
                 </HBox>
             </children>
-            <padding><Insets bottom="15.0" left="15.0" right="10.0" /></padding>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="10.0" />
+            </padding>
         </VBox>
     </center>
+
     <right>
         <FlowPane prefHeight="517.0" prefWidth="440.0" style="-fx-padding: 0 20 0 20; -fx-alignment: TOP_CENTER;" BorderPane.alignment="TOP_CENTER">
             <children>
@@ -70,8 +93,11 @@
                         <VBox alignment="CENTER" spacing="8">
                             <children>
                                 <Label fx:id="lblUsuarioActual" alignment="CENTER" text="User">
-                                    <font><Font size="18" /></font>
+                                    <font>
+                                        <Font size="18" />
+                                    </font>
                                 </Label>
+
                                 <TableView fx:id="tablaCopias" prefHeight="235.0" prefWidth="352.0">
                                     <columns>
                                         <TableColumn fx:id="colCopiaId" prefWidth="50" text="ID" />
@@ -80,6 +106,7 @@
                                         <TableColumn fx:id="colCopiaSoporte" prefWidth="81.0" text="Soporte" />
                                     </columns>
                                 </TableView>
+
                                 <TitledPane expanded="true" text="Crear nueva copia">
                                     <content>
                                         <VBox spacing="6">
@@ -102,6 +129,7 @@
                                         </VBox>
                                     </content>
                                 </TitledPane>
+
                                 <HBox alignment="CENTER" spacing="10">
                                     <children>
                                         <Button onAction="#onEditCopia" text="Editar copia" />
@@ -115,8 +143,12 @@
             </children>
         </FlowPane>
     </right>
+
     <bottom>
         <Button fx:id="btnSalir" mnemonicParsing="false" onAction="#onSalir" text="Salir" BorderPane.alignment="CENTER" />
     </bottom>
-    <padding><Insets bottom="10.0" /></padding>
+
+    <padding>
+        <Insets bottom="10.0" />
+    </padding>
 </BorderPane>

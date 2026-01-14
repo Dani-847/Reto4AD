@@ -1,8 +1,10 @@
 package org.drk.reto2diad.controllers;
 
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -13,7 +15,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
-import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -48,8 +49,11 @@ public class MainController implements Initializable {
     @FXML private ComboBox<String> cmbEstado;
     @FXML private ComboBox<String> cmbSoporte;
     @FXML private Button btnGestionUsuarios;
-
     @FXML private Label lblWinTitle;
+
+    @FXML private TextField txtBuscarTitulo;
+
+    @FXML private Button btnUndoPelicula;
 
     private final SimpleSessionService sessionService = new SimpleSessionService();
     private final PeliculaService peliculaService = new PeliculaService();
@@ -58,11 +62,62 @@ public class MainController implements Initializable {
 
     private double xOffset, yOffset;
 
+    private final ObservableList<Pelicula> peliculasMaster = FXCollections.observableArrayList();
+    private FilteredList<Pelicula> peliculasFiltradas;
+
+    // --------- Infraestructura de UNDO ---------
+
+    private enum MovieOpType { CREATE, UPDATE, DELETE }
+
+    private static final class MovieUndoAction {
+        final MovieOpType type;
+        final Pelicula before; // estado previo (para UPDATE/DELETE). En CREATE puede ser null.
+        final Pelicula after;  // estado posterior (para CREATE/UPDATE). En DELETE puede ser null.
+
+        MovieUndoAction(MovieOpType type, Pelicula before, Pelicula after) {
+            this.type = type;
+            this.before = before;
+            this.after = after;
+        }
+    }
+
+    private MovieUndoAction lastMovieUndo = null;
+
+    private static Pelicula snapshot(Pelicula p) {
+        if (p == null) return null;
+        Pelicula c = new Pelicula();
+        c.setId(p.getId());
+        c.setTitulo(p.getTitulo());
+        c.setAnio(p.getAnio());
+        c.setGenero(p.getGenero());
+        c.setDirector(p.getDirector());
+        return c;
+    }
+
+    private void setUndo(MovieUndoAction action) {
+        lastMovieUndo = action;
+        if (btnUndoPelicula != null) {
+            btnUndoPelicula.setDisable(action == null);
+            btnUndoPelicula.setManaged(true);
+            btnUndoPelicula.setVisible(true);
+        }
+    }
+
+    private void clearUndo() {
+        lastMovieUndo = null;
+        if (btnUndoPelicula != null) btnUndoPelicula.setDisable(true);
+    }
+
+    // ---------------------------------------------------------------
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         active = sessionService.getActive();
         setupTables();
+        setupBusquedaTitulo();
+        setupDetallePeliculaDobleClick();
         refreshData();
+
         lblUsuarioActual.setText(formatCorreoAdmin(active));
 
         boolean admin = sessionService.isAdmin();
@@ -80,7 +135,41 @@ public class MainController implements Initializable {
         cmbSoporte.setItems(FXCollections.observableArrayList("DVD","BluRay","Digital","VHS"));
         cmbSoporte.getSelectionModel().selectFirst();
 
-        tablaPeliculas.getSelectionModel().selectedItemProperty().addListener(showPelicula());
+        // estado inicial de undo
+        if (btnUndoPelicula != null) btnUndoPelicula.setDisable(true);
+    }
+
+    private void setupDetallePeliculaDobleClick() {
+        tablaPeliculas.setRowFactory(tv -> {
+            TableRow<Pelicula> row = new TableRow<>();
+            row.setOnMouseClicked(ev -> {
+                if (ev.getClickCount() == 2 && !row.isEmpty()) {
+                    Pelicula p = row.getItem();
+                    JavaFXUtil.showModal(Alert.AlertType.INFORMATION, p.getTitulo(), p.getTitulo(), p.toString());
+                }
+            });
+            return row;
+        });
+    }
+
+    private void setupBusquedaTitulo() {
+        peliculasFiltradas = new FilteredList<>(peliculasMaster, p -> true);
+
+        SortedList<Pelicula> peliculasOrdenadas = new SortedList<>(peliculasFiltradas);
+        peliculasOrdenadas.comparatorProperty().bind(tablaPeliculas.comparatorProperty());
+
+        tablaPeliculas.setItems(peliculasOrdenadas);
+
+        if (txtBuscarTitulo != null) {
+            txtBuscarTitulo.textProperty().addListener((obs, oldV, newV) -> {
+                final String q = (newV == null) ? "" : newV.trim().toLowerCase();
+                peliculasFiltradas.setPredicate(p -> {
+                    if (q.isEmpty()) return true;
+                    String t = p.getTitulo();
+                    return t != null && t.toLowerCase().contains(q);
+                });
+            });
+        }
     }
 
     private void setupTables() {
@@ -100,8 +189,13 @@ public class MainController implements Initializable {
     }
 
     private void refreshData() {
-        tablaPeliculas.setItems(FXCollections.observableArrayList(peliculaService.findAll()));
+        peliculasMaster.setAll(peliculaService.findAll());
         tablaCopias.setItems(FXCollections.observableArrayList(copiaService.findByUser(active)));
+    }
+
+    @FXML
+    public void onClearBuscarTitulo(ActionEvent e) {
+        if (txtBuscarTitulo != null) txtBuscarTitulo.clear();
     }
 
     private String formatCorreoAdmin(User u) {
@@ -109,18 +203,46 @@ public class MainController implements Initializable {
         return sessionService.isAdmin() ? base + " (Vista de administrador)" : base;
     }
 
-    private ChangeListener<Pelicula> showPelicula() {
-        return (obs, oldSel, newSel) -> {
-            if (newSel != null) {
-                JavaFXUtil.showModal(
-                        Alert.AlertType.INFORMATION,
-                        newSel.getTitulo(),
-                        newSel.getTitulo(),
-                        newSel.toString()
-                );
+    // ----------------- Handler undo -----------------
+
+    @FXML
+    public void onUndoPelicula(ActionEvent e) {
+        if (!sessionService.isAdmin()) return;
+        if (lastMovieUndo == null) return;
+
+        try {
+            switch (lastMovieUndo.type) {
+                case CREATE -> {
+                    // deshacer CREATE = borrar lo creado
+                    Pelicula created = lastMovieUndo.after;
+                    if (created != null) {
+                        peliculaService.delete(created);
+                    }
+                }
+                case UPDATE -> {
+                    // deshacer UPDATE = restaurar "before"
+                    Pelicula before = lastMovieUndo.before;
+                    if (before != null) {
+                        peliculaService.update(before);
+                    }
+                }
+                case DELETE -> {
+                    // deshacer DELETE = re-crear la película eliminada (mismo id si Hibernate lo permite con merge)
+                    Pelicula deleted = lastMovieUndo.before;
+                    if (deleted != null) {
+                        peliculaService.update(deleted);
+                    }
+                }
             }
-        };
+
+            clearUndo();
+            refreshData();
+        } catch (Exception ex) {
+            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Deshacer película", ex.getMessage());
+        }
     }
+
+    // -------------------------------------------------------
 
     @FXML
     public void onCreateCopia(ActionEvent e) {
@@ -161,21 +283,45 @@ public class MainController implements Initializable {
     @FXML
     public void onAddPelicula(ActionEvent e) {
         if (!sessionService.isAdmin()) return;
+
+        // NO hay "before" aquí; se captura al cerrar el diálogo si realmente se creó
         openPeliculaDialog(null);
     }
 
     @FXML
     public void onEditPelicula(ActionEvent e) {
         if (!sessionService.isAdmin()) return;
+
         Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
         if (sel == null) return;
+
+        // Snapshot antes de editar
+        Pelicula before = snapshot(sel);
         openPeliculaDialog(sel);
+
+        // Si el diálogo guardó cambios, la lista se refresca dentro; se intenta detectar el "after"
+        // (cargamos por id)
+        try {
+            Pelicula after = peliculaService.findById(Long.valueOf(sel.getId())).map(MainController::snapshot).orElse(null);
+            if (after != null && before != null) {
+                boolean changed =
+                        (before.getTitulo() != null ? !before.getTitulo().equals(after.getTitulo()) : after.getTitulo() != null) ||
+                                (before.getGenero() != null ? !before.getGenero().equals(after.getGenero()) : after.getGenero() != null) ||
+                                (before.getDirector() != null ? !before.getDirector().equals(after.getDirector()) : after.getDirector() != null) ||
+                                (before.getAnio() != null ? !before.getAnio().equals(after.getAnio()) : after.getAnio() != null);
+
+                if (changed) setUndo(new MovieUndoAction(MovieOpType.UPDATE, before, after));
+            }
+        } catch (Exception ignore) {
+            // si falla la detección de cambios no se arma undo
+        }
     }
 
     private void openPeliculaDialog(Pelicula pelicula) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/drk/reto2diad/pelicula-dialog.fxml"));
             Parent root = loader.load();
+
             PeliculaDialogController ctrl = loader.getController();
             ctrl.init(pelicula);
 
@@ -199,9 +345,15 @@ public class MainController implements Initializable {
 
             Pelicula result = ctrl.getResult();
             if (result != null) {
-                if (result.getId() == null) peliculaService.create(result);
-                else peliculaService.update(result);
+                boolean isCreate = (result.getId() == null);
+
+                Pelicula saved = isCreate ? peliculaService.create(result) : peliculaService.update(result);
                 refreshData();
+
+                if (isCreate) {
+                    // deshacer CREATE => borrar lo creado
+                    setUndo(new MovieUndoAction(MovieOpType.CREATE, null, snapshot(saved)));
+                }
             }
         } catch (Exception ex) {
             JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Diálogo película", ex.getMessage());
@@ -211,9 +363,16 @@ public class MainController implements Initializable {
     @FXML
     public void onDeletePelicula(ActionEvent e) {
         if (!sessionService.isAdmin()) return;
+
         Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
         if (sel == null) return;
+
+        Pelicula before = snapshot(sel);
         peliculaService.delete(sel);
+
+        // deshacer DELETE => volver a guardar el estado anterior
+        setUndo(new MovieUndoAction(MovieOpType.DELETE, before, null));
+
         refreshData();
     }
 
