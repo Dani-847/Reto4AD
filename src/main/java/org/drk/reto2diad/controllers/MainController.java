@@ -155,7 +155,6 @@ public class MainController implements Initializable {
             return;
         }
         tablaCopias.getSelectionModel().clearSelection();
-        refreshData();
         tablaCopias.refresh();
     }
 
