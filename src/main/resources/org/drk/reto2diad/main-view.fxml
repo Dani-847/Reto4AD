@@ -28,7 +28,22 @@
                                 <Font name="System Bold" size="13.0" />
                             </font>
                         </Label>
+
                         <Region HBox.hgrow="ALWAYS" />
+
+                        <Button fx:id="btnAyuda"
+                                focusTraversable="false"
+                                minHeight="28.0"
+                                onAction="#onAyuda"
+                                pickOnBounds="true"
+                                prefHeight="28.0"
+                                style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 0 10; -fx-background-insets: 0; -fx-background-radius: 0;"
+                                text="Ayuda">
+                            <tooltip>
+                                <Tooltip text="Ver guía rápida de uso" />
+                            </tooltip>
+                        </Button>
+
                         <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onMinimizeWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="—">
                             <tooltip>
                                 <Tooltip text="Minimizar" />
@@ -49,8 +64,6 @@
     <center>
         <VBox prefHeight="514.0" prefWidth="762.0" spacing="10" BorderPane.alignment="TOP_CENTER">
             <children>
-
-                <!-- NUEVO: barra de búsqueda pegada a la tabla -->
                 <HBox spacing="10" style="-fx-padding: 0 0 0 0;">
                     <children>
                         <Label text="Buscar título:" />
@@ -75,7 +88,7 @@
                         <Button fx:id="btnAddPeli" onAction="#onAddPelicula" text="Añadir película" />
                         <Button fx:id="btnEditPeli" onAction="#onEditPelicula" text="Editar película" />
                         <Button fx:id="btnDelPeli" onAction="#onDeletePelicula" text="Eliminar película" />
-                  <Button fx:id="btnUndoPelicula" onAction="#onUndoPelicula" text="Deshacer" />
+                        <Button fx:id="btnUndoPelicula" onAction="#onUndoPelicula" text="Deshacer" />
                     </children>
                 </HBox>
             </children>

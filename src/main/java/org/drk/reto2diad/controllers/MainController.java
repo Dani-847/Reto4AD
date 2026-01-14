@@ -138,6 +138,11 @@ public class MainController implements Initializable {
 
         // estado inicial de undo
         if (btnUndoPelicula != null) btnUndoPelicula.setDisable(true);
+
+        if (txtBuscarTitulo != null) txtBuscarTitulo.setTooltip(new Tooltip("Filtra la tabla por título (contiene)."));
+        if (cmbEstado != null) cmbEstado.setTooltip(new Tooltip("Estado físico de la copia."));
+        if (cmbSoporte != null) cmbSoporte.setTooltip(new Tooltip("Formato de la copia (DVD, BluRay, etc.)."));
+        if (btnUndoPelicula != null) btnUndoPelicula.setTooltip(new Tooltip("Deshace la última operación sobre películas (solo admin)."));
     }
 
     private void setupDetallePeliculaDobleClick() {
@@ -452,6 +457,27 @@ public class MainController implements Initializable {
         } catch (Exception ex) {
             JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Gestión usuarios", ex.getMessage());
         }
+    }
+
+    @FXML
+    public void onAyuda(ActionEvent e) {
+        String help = """
+            Objetivo:
+            Gestionar películas y tus copias asociadas.
+
+            Películas (izquierda):
+            - Buscar por título con el campo “Buscar título”.
+            - Doble clic en una película para ver detalles.
+            - Admin: puede añadir/editar/eliminar películas y deshacer la última acción.
+
+            Copias (derecha):
+            - Selecciona una película y elige Estado/Soporte para crear una copia.
+            - Puedes editar/eliminar solo tus copias.
+
+            Login:
+            - Si el correo no existe o la contraseña es incorrecta, se indica en rojo.
+            """;
+        JavaFXUtil.showModal(Alert.AlertType.INFORMATION, "Ayuda", "Guía rápida", help);
     }
 
     @FXML
