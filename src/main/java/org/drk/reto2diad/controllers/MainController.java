@@ -347,32 +347,34 @@ public class MainController implements Initializable {
             dialog.initModality(Modality.APPLICATION_MODAL);
             dialog.setTitle(pelicula == null ? "Añadir película" : "Editar película");
             dialog.setScene(new Scene(root));
-            dialog.setOnShown(ev -> {
-                Stage owner = JavaFXUtil.getStage();
-                if (owner != null) {
-                    double x = owner.getX() + (owner.getWidth() - dialog.getWidth()) / 2;
-                    double y = owner.getY() + (owner.getHeight() - dialog.getHeight()) / 2;
-                    dialog.setX(x);
-                    dialog.setY(y);
-                } else {
-                    dialog.centerOnScreen();
-                }
-            });
-            dialog.showAndWait();
 
-            Pelicula result = ctrl.getResult();
-            if (result != null) {
-                boolean isCreate = (result.getId() == null);
+            // Bucle: solo se cierra si el guardado en BD funciona o el usuario cancela
+            while (true) {
+                dialog.showAndWait();
 
-                Pelicula saved = isCreate ? peliculaService.create(result) : peliculaService.update(result);
-                refreshData();
+                Pelicula result = ctrl.getResult();
+                if (result == null) return; // cancelar
 
-                if (isCreate) {
-                    // usa el "saved" (ya trae id real) para que el undo borre bien
-                    setUndo(new MovieUndoAction(MovieOpType.CREATE, null, snapshot(saved)));
+                try {
+                    boolean isCreate = (result.getId() == null);
+                    Pelicula saved = isCreate ? peliculaService.create(result) : peliculaService.update(result);
+
+                    refreshData();
+
+                    if (isCreate) {
+                        setUndo(new MovieUndoAction(MovieOpType.CREATE, null, snapshot(saved)));
+                    }
+
+                    return; // éxito: salir
+                } catch (Exception ex) {
+                    // Reabrir el diálogo y mostrar el error en lblError (sin modal)
+                    ctrl.showDbError(ex);
+                    dialog.show(); // vuelve a mostrarlo sin bloquear la app
+                    dialog.hide(); // fuerza refresco de layout si fuese necesario
                 }
             }
         } catch (Exception ex) {
+            // aquí sí tendría sentido un modal genérico, pero si quieres, también podrías loguear
             JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Diálogo película", ex.getMessage());
         }
     }

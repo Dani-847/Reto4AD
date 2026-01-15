@@ -25,12 +25,10 @@ public class PeliculaDialogController {
 
     @FXML
     private void initialize() {
-        // Placeholders / ayuda
         if (txtTitulo != null) txtTitulo.setPromptText("Ej: Casablanca");
         if (txtAnio != null) txtAnio.setPromptText("Ej: 1999 (mín 1888)");
         if (txtDirector != null) txtDirector.setPromptText("Ej: Christopher Nolan");
 
-        // Sugerencias para género
         if (cmbGenero != null) {
             List<String> generos = List.of(
                     "Acción", "Aventura", "Animación", "Ciencia ficción", "Comedia", "Crimen",
@@ -59,6 +57,15 @@ public class PeliculaDialogController {
         return result;
     }
 
+    public void showDbError(Throwable ex) {
+        String msg = ex != null ? ex.getMessage() : null;
+        if (msg == null || msg.isBlank()) msg = "Error al guardar.";
+        if (msg.contains("Column 'año' cannot be null") || msg.contains("año") && msg.contains("cannot be null")) {
+            msg = "El año es obligatorio.";
+        }
+        showError(msg);
+    }
+
     @FXML
     private void onGuardar() {
         if (lblError != null) lblError.setText("");
@@ -68,34 +75,35 @@ public class PeliculaDialogController {
         final String genero = cmbGenero != null ? safeTrim(cmbGenero.getEditor().getText()) : null;
         final String director = txtDirector != null ? safeTrim(txtDirector.getText()) : null;
 
-        // 1) Validación: título obligatorio
         if (titulo == null || titulo.isBlank()) {
             showError("El título es obligatorio.");
             return;
         }
 
-        // 2) Validación: género obligatorio (evita: not-null property ... genero)
         if (genero == null || genero.isBlank()) {
             showError("El género es obligatorio.");
             return;
         }
 
-        // 3) Validación: año opcional, pero si viene debe ser número y realista
-        Integer anio = null;
-        if (anioStr != null && !anioStr.isBlank()) {
-            try {
-                anio = Integer.parseInt(anioStr);
-            } catch (NumberFormatException ex) {
-                showError("El año debe ser numérico (ej: 1999).");
-                return;
-            }
+        // IMPORTANTE: si tu columna `año` es NOT NULL, aquí debe ser obligatorio
+        if (anioStr == null || anioStr.isBlank()) {
+            showError("El año es obligatorio.");
+            return;
+        }
 
-            final int minYear = 1888;
-            final int maxYear = Year.now().getValue() + 1; // margen para próximos estrenos
-            if (anio < minYear || anio > maxYear) {
-                showError("El año debe estar entre " + minYear + " y " + maxYear + ".");
-                return;
-            }
+        Integer anio;
+        try {
+            anio = Integer.parseInt(anioStr);
+        } catch (NumberFormatException ex) {
+            showError("El año debe ser numérico (ej: 1999).");
+            return;
+        }
+
+        final int minYear = 1888;
+        final int maxYear = Year.now().getValue() + 1;
+        if (anio < minYear || anio > maxYear) {
+            showError("El año debe estar entre " + minYear + " y " + maxYear + ".");
+            return;
         }
 
         if (editing == null) editing = new Pelicula();
