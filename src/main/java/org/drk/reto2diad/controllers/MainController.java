@@ -233,10 +233,12 @@ public class MainController implements Initializable {
                     }
                 }
                 case DELETE -> {
-                    // deshacer DELETE = re-crear la película eliminada (mismo id si Hibernate lo permite con merge)
+                    // deshacer DELETE = re-crear (sin forzar el mismo id)
                     Pelicula deleted = lastMovieUndo.before;
                     if (deleted != null) {
-                        peliculaService.update(deleted);
+                        Pelicula toCreate = snapshot(deleted);
+                        toCreate.setId(null); // importante: evita problemas con IDENTITY/autoincrement
+                        peliculaService.create(toCreate);
                     }
                 }
             }
@@ -328,7 +330,7 @@ public class MainController implements Initializable {
                 if (changed) setUndo(new MovieUndoAction(MovieOpType.UPDATE, before, after));
             }
         } catch (Exception ignore) {
-            // si falla la detección de cambios no se arma undo
+            // si falla la detección de cambios no se hace undo
         }
     }
 
@@ -366,7 +368,7 @@ public class MainController implements Initializable {
                 refreshData();
 
                 if (isCreate) {
-                    // deshacer CREATE => borrar lo creado
+                    // usa el "saved" (ya trae id real) para que el undo borre bien
                     setUndo(new MovieUndoAction(MovieOpType.CREATE, null, snapshot(saved)));
                 }
             }
