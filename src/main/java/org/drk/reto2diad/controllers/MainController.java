@@ -1,5 +1,6 @@
 package org.drk.reto2diad.controllers;
 
+import javafx.animation.PauseTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -18,6 +19,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.drk.reto2diad.copia.Copia;
 import org.drk.reto2diad.copia.CopiaService;
 import org.drk.reto2diad.pelicula.Pelicula;
@@ -66,14 +68,61 @@ public class MainController implements Initializable {
     private final ObservableList<Pelicula> peliculasMaster = FXCollections.observableArrayList();
     private FilteredList<Pelicula> peliculasFiltradas;
 
+    @FXML private Label lblLogger;
+
+    // --------- Logger UI (feedback no modal) ---------
+
+    private enum UiLogType { OK, WARN, ERROR }
+
+    private PauseTransition loggerAutoClear;
+
+    private void log(UiLogType type, String msg) {
+        if (lblLogger == null) return;
+
+        lblLogger.setText(msg == null ? "" : msg);
+
+        // estilo mínimo sin depender de CSS externo
+        String base = "-fx-padding: 6 10 6 10; -fx-background-radius: 6; -fx-font-size: 12;";
+        String style = switch (type) {
+            case OK -> base + " -fx-text-fill: #0f5132; -fx-background-color: #d1e7dd;";
+            case WARN -> base + " -fx-text-fill: #664d03; -fx-background-color: #fff3cd;";
+            case ERROR -> base + " -fx-text-fill: #842029; -fx-background-color: #f8d7da;";
+        };
+        lblLogger.setStyle(style);
+        lblLogger.setVisible(true);
+        lblLogger.setManaged(true);
+
+        if (loggerAutoClear != null) loggerAutoClear.stop();
+        loggerAutoClear = new PauseTransition(Duration.seconds(type == UiLogType.ERROR ? 8 : 4));
+        loggerAutoClear.setOnFinished(ev -> clearLog());
+        loggerAutoClear.playFromStart();
+    }
+
+    private void logOk(String msg) { log(UiLogType.OK, msg); }
+    private void logWarn(String msg) { log(UiLogType.WARN, msg); }
+    private void logError(String msg) { log(UiLogType.ERROR, msg); }
+
+    private void clearLog() {
+        if (lblLogger == null) return;
+        lblLogger.setText("");
+        lblLogger.setVisible(false);
+        lblLogger.setManaged(false);
+    }
+
+    private static String safeMsg(Exception ex) {
+        if (ex == null) return "Error desconocido.";
+        String m = ex.getMessage();
+        return (m == null || m.isBlank()) ? ex.getClass().getSimpleName() : m;
+    }
+
     // --------- Infraestructura de UNDO ---------
 
     private enum MovieOpType { CREATE, UPDATE, DELETE }
 
     private static final class MovieUndoAction {
         final MovieOpType type;
-        final Pelicula before; // estado previo (para UPDATE/DELETE). En CREATE puede ser null.
-        final Pelicula after;  // estado posterior (para CREATE/UPDATE). En DELETE puede ser null.
+        final Pelicula before;
+        final Pelicula after;
 
         MovieUndoAction(MovieOpType type, Pelicula before, Pelicula after) {
             this.type = type;
@@ -136,13 +185,15 @@ public class MainController implements Initializable {
         cmbSoporte.setItems(FXCollections.observableArrayList("DVD","BluRay","Digital","VHS"));
         cmbSoporte.getSelectionModel().selectFirst();
 
-        // estado inicial de undo
         if (btnUndoPelicula != null) btnUndoPelicula.setDisable(true);
 
         if (txtBuscarTitulo != null) txtBuscarTitulo.setTooltip(new Tooltip("Filtra la tabla por título (contiene)."));
         if (cmbEstado != null) cmbEstado.setTooltip(new Tooltip("Estado físico de la copia."));
         if (cmbSoporte != null) cmbSoporte.setTooltip(new Tooltip("Formato de la copia (DVD, BluRay, etc.)."));
         if (btnUndoPelicula != null) btnUndoPelicula.setTooltip(new Tooltip("Deshace la última operación sobre películas (solo admin)."));
+
+        clearLog();
+        logOk("Listo.");
     }
 
     private void setupDetallePeliculaDobleClick() {
@@ -152,6 +203,7 @@ public class MainController implements Initializable {
                 if (ev.getClickCount() == 2 && !row.isEmpty()) {
                     Pelicula p = row.getItem();
                     JavaFXUtil.showModal(Alert.AlertType.INFORMATION, p.getTitulo(), p.getTitulo(), p.toString());
+                    logOk("Mostrando detalles de: " + (p.getTitulo() != null ? p.getTitulo() : "(sin título)"));
                 }
             });
             return row;
@@ -174,6 +226,8 @@ public class MainController implements Initializable {
                     String t = p.getTitulo();
                     return t != null && t.toLowerCase().contains(q);
                 });
+                if (q.isEmpty()) logOk("Filtro limpiado.");
+                else logOk("Filtrando por: " + q);
             });
         }
     }
@@ -195,13 +249,18 @@ public class MainController implements Initializable {
     }
 
     private void refreshData() {
-        peliculasMaster.setAll(peliculaService.findAll());
-        tablaCopias.setItems(FXCollections.observableArrayList(copiaService.findByUser(active)));
+        try {
+            peliculasMaster.setAll(peliculaService.findAll());
+            tablaCopias.setItems(FXCollections.observableArrayList(copiaService.findByUser(active)));
+        } catch (Exception ex) {
+            logError("No se pudo refrescar datos: " + safeMsg(ex));
+        }
     }
 
     @FXML
     public void onClearBuscarTitulo(ActionEvent e) {
         if (txtBuscarTitulo != null) txtBuscarTitulo.clear();
+        logOk("Búsqueda limpiada.");
     }
 
     private String formatCorreoAdmin(User u) {
@@ -213,32 +272,34 @@ public class MainController implements Initializable {
 
     @FXML
     public void onUndoPelicula(ActionEvent e) {
-        if (!sessionService.isAdmin()) return;
-        if (lastMovieUndo == null) return;
+        if (!sessionService.isAdmin()) {
+            logWarn("Acción no permitida: solo admin.");
+            return;
+        }
+        if (lastMovieUndo == null) {
+            logWarn("No hay acción para deshacer.");
+            return;
+        }
 
         try {
             switch (lastMovieUndo.type) {
                 case CREATE -> {
-                    // deshacer CREATE = borrar lo creado
                     Pelicula created = lastMovieUndo.after;
-                    if (created != null) {
-                        peliculaService.delete(created);
-                    }
+                    if (created != null) peliculaService.delete(created);
+                    logOk("Deshecho: creación de película.");
                 }
                 case UPDATE -> {
-                    // deshacer UPDATE = restaurar "before"
                     Pelicula before = lastMovieUndo.before;
-                    if (before != null) {
-                        peliculaService.update(before);
-                    }
+                    if (before != null) peliculaService.update(before);
+                    logOk("Deshecho: edición de película.");
                 }
                 case DELETE -> {
-                    // deshacer DELETE = re-crear (sin forzar el mismo id)
                     Pelicula deleted = lastMovieUndo.before;
                     if (deleted != null) {
                         Pelicula toCreate = snapshot(deleted);
-                        toCreate.setId(null); // importante: evita problemas con IDENTITY/autoincrement
+                        toCreate.setId(null);
                         peliculaService.create(toCreate);
+                        logOk("Deshecho: eliminación de película.");
                     }
                 }
             }
@@ -246,7 +307,7 @@ public class MainController implements Initializable {
             clearUndo();
             refreshData();
         } catch (Exception ex) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Deshacer película", ex.getMessage());
+            logError("Error al deshacer: " + safeMsg(ex));
         }
     }
 
@@ -256,68 +317,97 @@ public class MainController implements Initializable {
     public void onCreateCopia(ActionEvent e) {
         Pelicula selected = tablaPeliculas.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            JavaFXUtil.showModal(Alert.AlertType.WARNING, "Copia", "Película no seleccionada", "Selecciona una película primero.");
+            logWarn("Selecciona una película antes de crear una copia.");
             return;
         }
-        copiaService.create(active, selected, cmbEstado.getValue(), cmbSoporte.getValue());
-        refreshData();
+        try {
+            copiaService.create(active, selected, cmbEstado.getValue(), cmbSoporte.getValue());
+            refreshData();
+            logOk("Copia creada.");
+        } catch (Exception ex) {
+            logError("No se pudo crear la copia: " + safeMsg(ex));
+        }
     }
 
     @FXML
     public void onEditCopia(ActionEvent e) {
         Copia copia = tablaCopias.getSelectionModel().getSelectedItem();
-        if (copia == null) return;
-
-        Integer copiaId = copia.getId();
-        if (copiaId == null) return;
-
-        var updated = copiaService.update(copiaId, active, cmbEstado.getValue(), cmbSoporte.getValue());
-        if (updated.isEmpty()) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Editar", "No permitido", "Solo tus copias.");
+        if (copia == null) {
+            logWarn("Selecciona una copia para editar.");
             return;
         }
 
-        refreshData();
+        Integer copiaId = copia.getId();
+        if (copiaId == null) {
+            logError("La copia seleccionada no tiene ID.");
+            return;
+        }
+
+        try {
+            var updated = copiaService.update(copiaId, active, cmbEstado.getValue(), cmbSoporte.getValue());
+            if (updated.isEmpty()) {
+                logWarn("No permitido: solo puedes editar tus copias.");
+                return;
+            }
+            refreshData();
+            logOk("Copia actualizada.");
+        } catch (Exception ex) {
+            logError("No se pudo editar la copia: " + safeMsg(ex));
+        }
     }
 
     @FXML
     public void onDeleteCopia(ActionEvent e) {
         Copia copia = tablaCopias.getSelectionModel().getSelectedItem();
-        if (copia == null) return;
-
-        Integer copiaId = copia.getId();
-        if (copiaId == null) return;
-
-        var deleted = copiaService.delete(copiaId, active);
-        if (deleted.isEmpty()) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Eliminar", "No permitido", "Solo tus copias.");
+        if (copia == null) {
+            logWarn("Selecciona una copia para eliminar.");
             return;
         }
 
-        refreshData();
+        Integer copiaId = copia.getId();
+        if (copiaId == null) {
+            logError("La copia seleccionada no tiene ID.");
+            return;
+        }
+
+        try {
+            var deleted = copiaService.delete(copiaId, active);
+            if (deleted.isEmpty()) {
+                logWarn("No permitido: solo puedes eliminar tus copias.");
+                return;
+            }
+            refreshData();
+            logOk("Copia eliminada.");
+        } catch (Exception ex) {
+            logError("No se pudo eliminar la copia: " + safeMsg(ex));
+        }
     }
 
     @FXML
     public void onAddPelicula(ActionEvent e) {
-        if (!sessionService.isAdmin()) return;
-
-        // NO hay "before" aquí; se captura al cerrar el diálogo si realmente se creó
+        if (!sessionService.isAdmin()) {
+            logWarn("Acción no permitida: solo admin.");
+            return;
+        }
         openPeliculaDialog(null);
     }
 
     @FXML
     public void onEditPelicula(ActionEvent e) {
-        if (!sessionService.isAdmin()) return;
+        if (!sessionService.isAdmin()) {
+            logWarn("Acción no permitida: solo admin.");
+            return;
+        }
 
         Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null) {
+            logWarn("Selecciona una película para editar.");
+            return;
+        }
 
-        // Snapshot antes de editar
         Pelicula before = snapshot(sel);
         openPeliculaDialog(sel);
 
-        // Si el diálogo guardó cambios, la lista se refresca dentro; se intenta detectar el "after"
-        // (cargamos por id)
         try {
             Pelicula after = peliculaService.findById(Long.valueOf(sel.getId())).map(MainController::snapshot).orElse(null);
             if (after != null && before != null) {
@@ -327,10 +417,15 @@ public class MainController implements Initializable {
                                 (before.getDirector() != null ? !before.getDirector().equals(after.getDirector()) : after.getDirector() != null) ||
                                 (before.getAnio() != null ? !before.getAnio().equals(after.getAnio()) : after.getAnio() != null);
 
-                if (changed) setUndo(new MovieUndoAction(MovieOpType.UPDATE, before, after));
+                if (changed) {
+                    setUndo(new MovieUndoAction(MovieOpType.UPDATE, before, after));
+                    logOk("Película actualizada.");
+                } else {
+                    logOk("Edición cancelada o sin cambios.");
+                }
             }
-        } catch (Exception ignore) {
-            // si falla la detección de cambios no se hace undo
+        } catch (Exception ex) {
+            logWarn("No se pudo verificar cambios: " + safeMsg(ex));
         }
     }
 
@@ -348,12 +443,14 @@ public class MainController implements Initializable {
             dialog.setTitle(pelicula == null ? "Añadir película" : "Editar película");
             dialog.setScene(new Scene(root));
 
-            // Bucle: solo se cierra si el guardado en BD funciona o el usuario cancela
             while (true) {
                 dialog.showAndWait();
 
                 Pelicula result = ctrl.getResult();
-                if (result == null) return; // cancelar
+                if (result == null) {
+                    logOk("Acción cancelada.");
+                    return;
+                }
 
                 try {
                     boolean isCreate = (result.getId() == null);
@@ -363,48 +460,46 @@ public class MainController implements Initializable {
 
                     if (isCreate) {
                         setUndo(new MovieUndoAction(MovieOpType.CREATE, null, snapshot(saved)));
+                        logOk("Película creada.");
                     }
 
-                    return; // éxito: salir
+                    return;
                 } catch (Exception ex) {
-                    // Reabrir el diálogo y mostrar el error en lblError (sin modal)
                     ctrl.showDbError(ex);
-                    dialog.show(); // vuelve a mostrarlo sin bloquear la app
-                    dialog.hide(); // fuerza refresco de layout si fuese necesario
+                    logError("Error al guardar: " + safeMsg(ex));
+                    dialog.show();
+                    dialog.hide();
                 }
             }
         } catch (Exception ex) {
-            // aquí sí tendría sentido un modal genérico, pero si quieres, también podrías loguear
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Diálogo película", ex.getMessage());
+            logError("Error abriendo diálogo: " + safeMsg(ex));
         }
     }
 
     @FXML
     public void onDeletePelicula(ActionEvent e) {
-        if (!sessionService.isAdmin()) return;
-
-        Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
-
-        // 1) Bloquear borrado si hay copias asociadas (FK ON DELETE RESTRICT)
-        try {
-            List<Copia> copias = copiaService.findByMovie(sel); // Asegúrate de tener este método en CopiaService
-            if (copias != null && !copias.isEmpty()) {
-                JavaFXUtil.showModal(
-                        Alert.AlertType.WARNING,
-                        "Eliminar película",
-                        "No se puede eliminar",
-                        "La película tiene " + copias.size() + " copia(s) asociada(s).\n" +
-                                "Elimina primero esas copias o cambia la política de borrado en la BD."
-                );
-                return;
-            }
-        } catch (Exception ex) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Comprobando copias", ex.getMessage());
+        if (!sessionService.isAdmin()) {
+            logWarn("Acción no permitida: solo admin.");
             return;
         }
 
-        // 2) Confirmación
+        Pelicula sel = tablaPeliculas.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            logWarn("Selecciona una película para eliminar.");
+            return;
+        }
+
+        try {
+            List<Copia> copias = copiaService.findByMovie(sel);
+            if (copias != null && !copias.isEmpty()) {
+                logWarn("No se puede eliminar: tiene " + copias.size() + " copia(s) asociada(s).");
+                return;
+            }
+        } catch (Exception ex) {
+            logError("Error comprobando copias: " + safeMsg(ex));
+            return;
+        }
+
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Confirmar eliminación");
         confirm.setHeaderText("¿Eliminar la película seleccionada?");
@@ -416,25 +511,29 @@ public class MainController implements Initializable {
         confirm.getButtonTypes().setAll(btnEliminar, btnCancelar);
 
         var res = confirm.showAndWait();
-        if (res.isEmpty() || res.get() != btnEliminar) return;
+        if (res.isEmpty() || res.get() != btnEliminar) {
+            logOk("Eliminación cancelada.");
+            return;
+        }
 
-        // 3) Eliminar + preparar undo
         try {
             Pelicula before = snapshot(sel);
             peliculaService.delete(sel);
 
             setUndo(new MovieUndoAction(MovieOpType.DELETE, before, null));
             refreshData();
+            logOk("Película eliminada.");
         } catch (Exception ex) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Eliminar película", ex.getMessage());
+            logError("No se pudo eliminar la película: " + safeMsg(ex));
         }
     }
 
-
-
     @FXML
     public void onGestionUsuarios(ActionEvent e) {
-        if (!sessionService.isAdmin()) return;
+        if (!sessionService.isAdmin()) {
+            logWarn("Acción no permitida: solo admin.");
+            return;
+        }
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/drk/reto2diad/users-dialog.fxml"));
             Parent root = loader.load();
@@ -458,8 +557,9 @@ public class MainController implements Initializable {
                 }
             });
             dialog.showAndWait();
+            logOk("Gestión de usuarios cerrada.");
         } catch (Exception ex) {
-            JavaFXUtil.showModal(Alert.AlertType.ERROR, "Error", "Gestión usuarios", ex.getMessage());
+            logError("Error abriendo gestión de usuarios: " + safeMsg(ex));
         }
     }
 
@@ -482,11 +582,13 @@ public class MainController implements Initializable {
             - Si el correo no existe o la contraseña es incorrecta, se indica en rojo.
             """;
         JavaFXUtil.showModal(Alert.AlertType.INFORMATION, "Ayuda", "Guía rápida", help);
+        logOk("Ayuda mostrada.");
     }
 
     @FXML
     public void onSalir(ActionEvent actionEvent) {
         sessionService.logout();
+        logOk("Sesión cerrada.");
         JavaFXUtil.setScene("/org/drk/reto2diad/login-view.fxml");
     }
 
@@ -511,6 +613,7 @@ public class MainController implements Initializable {
         Stage stage = JavaFXUtil.getStage();
         if (stage == null) stage = (Stage) ((Node) e.getSource()).getScene().getWindow();
         stage.setIconified(true);
+        logOk("Ventana minimizada.");
     }
 
     @FXML

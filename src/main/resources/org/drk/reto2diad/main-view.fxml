@@ -31,14 +31,7 @@
 
                         <Region HBox.hgrow="ALWAYS" />
 
-                        <Button fx:id="btnAyuda"
-                                focusTraversable="false"
-                                minHeight="28.0"
-                                onAction="#onAyuda"
-                                pickOnBounds="true"
-                                prefHeight="28.0"
-                                style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 0 10; -fx-background-insets: 0; -fx-background-radius: 0;"
-                                text="Ayuda">
+                        <Button fx:id="btnAyuda" focusTraversable="false" minHeight="28.0" onAction="#onAyuda" pickOnBounds="true" prefHeight="28.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 0 10; -fx-background-insets: 0; -fx-background-radius: 0;" text="Ayuda">
                             <tooltip>
                                 <Tooltip text="Ver guía rápida de uso" />
                             </tooltip>
@@ -62,7 +55,7 @@
     </top>
 
     <center>
-        <VBox prefHeight="514.0" prefWidth="762.0" spacing="10" BorderPane.alignment="TOP_CENTER">
+        <VBox alignment="CENTER" prefHeight="514.0" prefWidth="762.0" spacing="10" BorderPane.alignment="TOP_CENTER">
             <children>
                 <HBox spacing="10" style="-fx-padding: 0 0 0 0;">
                     <children>
@@ -81,6 +74,7 @@
                         <TableColumn fx:id="colPeliDirector" prefWidth="219.0" text="Director" />
                     </columns>
                 </TableView>
+            <Label fx:id="lblLogger" alignment="CENTER" contentDisplay="CENTER" />
 
                 <HBox fx:id="boxAdmin" alignment="CENTER" spacing="10">
                     <children>
