@@ -1,84 +1,103 @@
-// java
 package org.drk.reto2diad.user;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import org.drk.reto2diad.utils.DataProvider;
 import org.drk.reto2diad.utils.Repository;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.query.Query;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository de User: CRUD básico y búsqueda por email.
+ * Repositorio JPA para la entidad User usando ObjectDB.
  */
 public class UserRepository implements Repository<User> {
 
-    private final SessionFactory sessionFactory;
-
-    public UserRepository(SessionFactory sessionFactory) {
-        this.sessionFactory = sessionFactory;
-    }
-
     @Override
     public User save(User entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            User managed = s.merge(entity);
-            s.getTransaction().commit();
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            User managed = em.merge(entity);
+            tx.commit();
             return managed;
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<User> delete(User entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            s.remove(entity);
-            s.getTransaction().commit();
-            return Optional.ofNullable(entity);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            User managed = em.merge(entity);
+            em.remove(managed);
+            tx.commit();
+            return Optional.of(entity);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<User> deleteById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            User u = s.find(User.class, id);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            User u = em.find(User.class, id.intValue());
             if (u != null) {
-                s.beginTransaction();
-                s.remove(u);
-                s.getTransaction().commit();
+                tx.begin();
+                em.remove(u);
+                tx.commit();
             }
             return Optional.ofNullable(u);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<User> findById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            return Optional.ofNullable(s.find(User.class, id));
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return Optional.ofNullable(em.find(User.class, id.intValue()));
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public List<User> findAll() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("from User", User.class).list();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT u FROM User u", User.class).getResultList();
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Long count() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("select count(u) from User u", Long.class).getSingleResult();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT COUNT(u) FROM User u", Long.class).getSingleResult();
+        } finally {
+            em.close();
         }
     }
 
     public Optional<User> findByEmail(String email) {
-        try (Session s = sessionFactory.openSession()) {
-            Query<User> q = s.createQuery("from User where email = :email", User.class);
-            q.setParameter("email", email);
-            return Optional.ofNullable(q.uniqueResult());
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            List<User> list = em.createQuery("SELECT u FROM User u WHERE u.email = :email", User.class)
+                    .setParameter("email", email)
+                    .getResultList();
+            return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+        } finally {
+            em.close();
         }
     }
 }

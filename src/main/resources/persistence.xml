@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
+    <persistence-unit name="peliculasPU" transaction-type="RESOURCE_LOCAL">
+        <provider>com.objectdb.jpa.Provider</provider>
+
+        <class>org.drk.reto2diad.pelicula.Pelicula</class>
+        <class>org.drk.reto2diad.user.User</class>
+        <class>org.drk.reto2diad.copia.Copia</class>
+
+        <properties>
+            <property name="jakarta.persistence.jdbc.url" value="objectdb:db/peliculas.odb"/>
+        </properties>
+    </persistence-unit>
+</persistence>

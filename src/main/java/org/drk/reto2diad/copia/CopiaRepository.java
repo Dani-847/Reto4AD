@@ -1,84 +1,100 @@
-// java
 package org.drk.reto2diad.copia;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.drk.reto2diad.user.User;
+import org.drk.reto2diad.utils.DataProvider;
 import org.drk.reto2diad.utils.Repository;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository de Copia: CRUD y búsqueda por usuario.
- */
 public class CopiaRepository implements Repository<Copia> {
-
-    private final SessionFactory sessionFactory;
-
-    public CopiaRepository(SessionFactory sessionFactory) {
-        this.sessionFactory = sessionFactory;
-    }
 
     @Override
     public Copia save(Copia entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            Copia managed = s.merge(entity);
-            s.getTransaction().commit();
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            Copia managed = em.merge(entity);
+            tx.commit();
             return managed;
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Copia> delete(Copia entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            s.remove(entity);
-            s.getTransaction().commit();
-            return Optional.ofNullable(entity);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            Copia managed = em.merge(entity);
+            em.remove(managed);
+            tx.commit();
+            return Optional.of(entity);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Copia> deleteById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            Copia c = s.find(Copia.class, id);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            Copia c = em.find(Copia.class, id.intValue());
             if (c != null) {
-                s.beginTransaction();
-                s.remove(c);
-                s.getTransaction().commit();
+                tx.begin();
+                em.remove(c);
+                tx.commit();
             }
             return Optional.ofNullable(c);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Copia> findById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            return Optional.ofNullable(s.find(Copia.class, id));
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return Optional.ofNullable(em.find(Copia.class, id.intValue()));
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public List<Copia> findAll() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("from Copia", Copia.class).list();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT c FROM Copia c", Copia.class).getResultList();
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Long count() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("select count(c) from Copia c", Long.class).getSingleResult();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT COUNT(c) FROM Copia c", Long.class).getSingleResult();
+        } finally {
+            em.close();
         }
     }
 
     public List<Copia> findByUser(User user) {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("from Copia c where c.user = :user", Copia.class)
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT c FROM Copia c WHERE c.user = :user", Copia.class)
                     .setParameter("user", user)
-                    .list();
+                    .getResultList();
+        } finally {
+            em.close();
         }
     }
 }

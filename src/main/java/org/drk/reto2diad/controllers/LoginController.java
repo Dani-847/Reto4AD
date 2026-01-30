@@ -157,4 +157,60 @@ public class LoginController implements Initializable {
     private void onTitleButtonHoverOut(MouseEvent e) {
         ((Node) e.getSource()).setOpacity(1.0);
     }
+
+    @FXML
+    public void onRegistrar(ActionEvent actionEvent) {
+        clearCorreoError();
+        clearContrasenaError();
+
+        String email = txtCorreo.getText();
+        String password = txtContraseña.getText();
+
+        // Validar campos vacíos
+        if (email == null || email.isBlank()) {
+            showCorreoError("El correo es obligatorio");
+            return;
+        }
+        if (password == null || password.isBlank()) {
+            showContrasenaError("La contraseña es obligatoria");
+            return;
+        }
+
+        // Validar formato email básico
+        if (!email.contains("@") || !email.contains(".")) {
+            showCorreoError("Formato de correo inválido");
+            return;
+        }
+
+        // Verificar si el usuario ya existe
+        if (userService.findByEmail(email).isPresent()) {
+            showCorreoError("El correo ya está registrado");
+            return;
+        }
+
+        // Verificar si es el primer usuario (base de datos vacía)
+        boolean esPrimerUsuario = userService.findAll().isEmpty();
+
+        // Crear nuevo usuario
+        User nuevoUsuario = new User();
+        nuevoUsuario.setEmail(email);
+        nuevoUsuario.setPassword(password);
+        nuevoUsuario.setIs_admin(esPrimerUsuario); // Admin si es el primero
+
+        try {
+            userService.create(nuevoUsuario);
+            lblLogger.setTextFill(javafx.scene.paint.Color.GREEN);
+            if (esPrimerUsuario) {
+                lblLogger.setText("Usuario administrador creado correctamente");
+            } else {
+                lblLogger.setText("Usuario registrado correctamente");
+            }
+            configurarComboUsuarios(); // Refrescar lista
+            txtContraseña.clear();
+        } catch (Exception e) {
+            showCorreoError("Error al registrar: " + e.getMessage());
+        }
+    }
+
+
 }

@@ -1,65 +1,71 @@
-// java
 package org.drk.reto2diad.pelicula;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.drk.reto2diad.utils.DataProvider;
-import org.hibernate.Session;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Servicio de Pelicula:
- * - Encapsula CRUD.
- * - Ejemplo de actualización parcial (titulo/género/director/año).
+ * Servicio para operaciones CRUD de Pelicula usando JPA/ObjectDB.
  */
 public class PeliculaService {
 
-    private final PeliculaRepository repo;
-
-    public PeliculaService() {
-        this.repo = new PeliculaRepository(DataProvider.getSessionFactory());
-    }
-
-    public Pelicula create(Pelicula p) {
-        return repo.save(p);
-    }
-
-    public Pelicula update(Pelicula p) {
-        return repo.save(p);
+    public List<Pelicula> findAll() {
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT p FROM Pelicula p", Pelicula.class).getResultList();
+        } finally {
+            em.close();
+        }
     }
 
     public Optional<Pelicula> findById(Long id) {
-        return repo.findById(id);
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return Optional.ofNullable(em.find(Pelicula.class, id.intValue()));
+        } finally {
+            em.close();
+        }
     }
 
-    public List<Pelicula> findAll() {
-        return repo.findAll();
+    public Pelicula create(Pelicula pelicula) {
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.persist(pelicula);
+            tx.commit();
+            return pelicula;
+        } finally {
+            em.close();}
     }
 
-    public Optional<Pelicula> delete(Pelicula p) {
-        return repo.delete(p);
+    public Pelicula update(Pelicula pelicula) {
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();Pelicula merged = em.merge(pelicula);
+            tx.commit();
+            return merged;
+        } finally {
+            em.close();
+        }
     }
 
-    public Optional<Pelicula> deleteById(Long id) {
-        return repo.deleteById(id);
-    }
-
-    public Long count() {
-        return repo.count();
-    }
-
-    public Optional<Pelicula> updateFields(Long id, String titulo, Integer anio, String genero, String director) {
-        try (Session s = DataProvider.getSessionFactory().openSession()) {
-            Pelicula managed = s.find(Pelicula.class, id);
-            if (managed == null) return Optional.empty();
-            s.beginTransaction();
-            if (titulo != null) managed.setTitulo(titulo);
-            if (anio != null) managed.setAnio(anio);
-            if (genero != null) managed.setGenero(genero);
-            if (director != null) managed.setDirector(director);
-            s.merge(managed);
-            s.getTransaction().commit();
-            return Optional.of(managed);
+    public void delete(Pelicula pelicula) {
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            Pelicula managed = em.find(Pelicula.class, pelicula.getId());
+            if (managed != null) {
+                em.remove(managed);
+            }
+            tx.commit();
+        } finally {
+            em.close();
         }
     }
 }

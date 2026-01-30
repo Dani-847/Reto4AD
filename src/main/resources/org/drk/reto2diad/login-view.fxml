@@ -28,6 +28,7 @@
                 <Button focusTraversable="false" minHeight="28.0" minWidth="36.0" onAction="#onCloseWindow" onMouseEntered="#onTitleButtonHoverIn" onMouseExited="#onTitleButtonHoverOut" pickOnBounds="true" prefHeight="28.0" prefWidth="36.0" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 14; -fx-padding: 0 12; -fx-background-insets: 0; -fx-background-radius: 0;" text="×">
                     <tooltip><Tooltip text="Cerrar" /></tooltip>
                 </Button>
+
             </children>
         </HBox>
 
@@ -55,7 +56,9 @@
                     <children>
                         <ComboBox fx:id="cmbUsuarios" prefHeight="25.0" prefWidth="132.0" promptText="(Admin) All users" />
                         <Button onAction="#entrar" text="Entrar" />
+                        <Button onAction="#onRegistrar" text="Registrar" />
                         <Button onAction="#Salir" text="Salir" />
+
                         <!-- <Button fx:id="a" onAction="#a" mnemonicParsing="false" text="ª" /> -->
                     </children>
                 </HBox>

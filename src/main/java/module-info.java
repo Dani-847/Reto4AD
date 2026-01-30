@@ -1,11 +1,9 @@
 module org.drk.reto2diad {
     requires javafx.controls;
     requires javafx.fxml;
-    requires org.hibernate.orm.core;
     requires jakarta.persistence;
+    requires com.objectdb;
     requires static lombok;
-    requires java.naming;
-
 
     opens org.drk.reto2diad;
     exports org.drk.reto2diad;

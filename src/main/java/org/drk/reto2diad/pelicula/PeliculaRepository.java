@@ -1,75 +1,86 @@
-// java
 package org.drk.reto2diad.pelicula;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import org.drk.reto2diad.utils.DataProvider;
 import org.drk.reto2diad.utils.Repository;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository de Pelicula: CRUD básico.
- */
 public class PeliculaRepository implements Repository<Pelicula> {
-
-    private final SessionFactory sessionFactory;
-
-    public PeliculaRepository(SessionFactory sessionFactory) {
-        this.sessionFactory = sessionFactory;
-    }
 
     @Override
     public Pelicula save(Pelicula entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            Pelicula managed = s.merge(entity);
-            s.getTransaction().commit();
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();Pelicula managed = em.merge(entity);
+            tx.commit();
             return managed;
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Pelicula> delete(Pelicula entity) {
-        try (Session s = sessionFactory.openSession()) {
-            s.beginTransaction();
-            s.remove(entity);
-            s.getTransaction().commit();
-            return Optional.ofNullable(entity);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            Pelicula managed = em.merge(entity);
+            em.remove(managed);
+            tx.commit();
+            return Optional.of(entity);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Pelicula> deleteById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            Pelicula p = s.find(Pelicula.class, id);
+        EntityManager em = DataProvider.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            Pelicula p = em.find(Pelicula.class, id.intValue());
             if (p != null) {
-                s.beginTransaction();
-                s.remove(p);
-                s.getTransaction().commit();
-            }
+                tx.begin();
+                em.remove(p);
+                tx.commit();}
             return Optional.ofNullable(p);
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Optional<Pelicula> findById(Long id) {
-        try (Session s = sessionFactory.openSession()) {
-            return Optional.ofNullable(s.find(Pelicula.class, id));
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return Optional.ofNullable(em.find(Pelicula.class, id.intValue()));
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public List<Pelicula> findAll() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("from Pelicula", Pelicula.class).list();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT p FROM Pelicula p", Pelicula.class).getResultList();
+        } finally {
+            em.close();
         }
     }
 
     @Override
     public Long count() {
-        try (Session s = sessionFactory.openSession()) {
-            return s.createQuery("select count(p) from Pelicula p", Long.class).getSingleResult();
+        EntityManager em = DataProvider.createEntityManager();
+        try {
+            return em.createQuery("SELECT COUNT(p) FROM Pelicula p", Long.class).getSingleResult();
+        } finally {
+            em.close();
         }
     }
 }
